@@ -9,6 +9,21 @@ tile_width = 10
 pellets = pygame.sprite.Group()
 sprites = pygame.sprite.Group()
 ghosts = pygame.sprite.Group()
+walls = pygame.sprite.Group()
+pellet_setup = ["11111111111100111111111111",
+                "10000100000100100000100001",
+                "11111111111111111111111111",
+                "10000100100000000100100001",
+                "10000100100000000100100001",
+                "11111100111100111100111111",
+                "00000100000000000000100000",
+                "00000100000000000000100000",
+                "00000100000000000000100000",
+                "00000100000000000000100000",
+                "00000100000000000000100000",
+                "00000100000000000000100000",
+                "00000100000000000000100000",
+                ]
 
 
 class Pellet(pygame.sprite.Sprite):
@@ -27,6 +42,19 @@ class SuperPellet(Pellet):
         Pellet.__init__(self, pos)
 
 
+class Wall(pygame.sprite.Sprite):
+    def __init__(self, pos, size):
+        pygame.sprite.Sprite.__init__(self)
+        self.rect = (pos[0], pos[1], size[0], size[1])
+        self.image = pygame.Surface(size)
+        self.image.fill((0, 0, 0))
+        if size[0] > size[1]:
+            pygame.draw.line(self.image, (0, 0, 200), (size[1]//2, 0), (size[0]-size[1]//2, 0), 5)
+            pygame.draw.line(self.image, (0, 0, 200), (size[1]//2, size[1]-1), (size[0]-size[1]//2, size[1]-1), 5)
+            pygame.draw.arc(self.image, (0, 0, 200), (0, 0, size[1], size[1]), 3.142/2, -3.142/2, 3)
+            pygame.draw.arc(self.image, (0, 0, 200), (size[0] - size[1], 0, size[1], size[1]), -3.142 / 2, 3.142 / 2, 3)
+
+
 class Pacman(pygame.sprite.Sprite):
     def __init__(self, group, pos=(0, 0)):
         pygame.sprite.Sprite.__init__(self, group)
@@ -41,7 +69,9 @@ class Pacman(pygame.sprite.Sprite):
         self.time = 0
 
     def can_go(self, dir):
-        return True
+        s = pygame.sprite.Sprite
+        s.rect = self.rect.move(dir[0], dir[1])
+        return len(pygame.sprite.spritecollide(s, walls, False)) == 0
 
     def update(self, time):
         self.time += time
@@ -51,10 +81,10 @@ class Pacman(pygame.sprite.Sprite):
 
     def move(self):
         if self.can_go(self.next_dir):
-            self.rect = self.rect.move(self.next_dir[0]*10, self.next_dir[1]*10)
+            self.rect = self.rect.move(self.next_dir[0], self.next_dir[1])
             self.current_dir = self.next_dir
         elif self.can_go(self.current_dir):
-            self.rect.move(self.current_dir[0], self.current_dir[1])
+            self.rect = self.rect.move(self.current_dir[0], self.current_dir[1])
         pelletList = pygame.sprite.spritecollide(self, pellets, True)
         self.num_pellets += len(pelletList)
         for i in pelletList:
@@ -64,7 +94,9 @@ class Pacman(pygame.sprite.Sprite):
 
 pacman = Pacman(sprites)
 pellets.add(Pellet((100, 100)))
+walls.add(Wall((150, 150), (100, 25)))
 sprites.add(pellets)
+sprites.add(walls)
 while True:
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -80,13 +112,13 @@ while True:
             surf = pygame.display.set_mode((event.w, event.h), RESIZABLE)
         elif event.type == KEYDOWN:
             if event.key == K_UP:
-                pacman.next_dir = (0, -1)
+                pacman.next_dir = (0, -10)
             elif event.key == K_DOWN:
-                pacman.next_dir = (0, 1)
+                pacman.next_dir = (0, 10)
             elif event.key == K_LEFT:
-                pacman.next_dir = (-1, 0)
+                pacman.next_dir = (-10, 0)
             elif event.key == K_RIGHT:
-                pacman.next_dir = (1, 0)
+                pacman.next_dir = (10, 0)
     sprites.update(Clock.tick())
     win.fill((0, 0, 0))
     sprites.draw(win)
