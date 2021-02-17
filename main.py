@@ -1,9 +1,9 @@
 import pygame, sys, random
 from pygame.locals import *
 pygame.init()
-surf = pygame.display.set_mode((300, 300), RESIZABLE)
+surf = pygame.display.set_mode((725, 800), RESIZABLE)
 Clock = pygame.time.Clock()
-win = pygame.Surface((500, 500))
+win = pygame.Surface((725, 800))
 offset = [0, 0]
 tile_width = 10
 pellets = pygame.sprite.Group()
@@ -54,12 +54,17 @@ walls = pygame.sprite.Group()
 pellet_setup = ([(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0), (11, 0), (14, 0), (15, 0), (16, 0), (17, 0), (18, 0), (19, 0), (20, 0), (21, 0), (22, 0), (23, 0), (24, 0), (25, 0), (0, 1), (5, 1), (11, 1), (14, 1), (20, 1), (25, 1), (0, 2), (5, 2), (11, 2), (14, 2), (20, 2), (25, 2), (5, 3), (11, 3), (14, 3), (20, 3), (0, 4), (1, 4), (2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (7, 4), (8, 4), (9, 4), (10, 4), (11, 4), (12, 4), (13, 4), (14, 4), (15, 4), (16, 4), (17, 4), (18, 4), (19, 4), (20, 4), (21, 4), (22, 4), (23, 4), (24, 4), (25, 4), (0, 5), (5, 5), (8, 5), (17, 5), (20, 5), (25, 5), (0, 6), (5, 6), (8, 6), (17, 6), (20, 6), (25, 6), (0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (8, 7), (9, 7), (10, 7), (11, 7), (14, 7), (15, 7), (16, 7), (17, 7), (20, 7), (21, 7), (22, 7), (23, 7), (24, 7), (25, 7), (5, 8), (20, 8), (5, 9), (20, 9), (5, 10), (20, 10), (5, 11), (20, 11), (5, 12), (20, 12), (5, 13), (20, 13), (5, 14), (20, 14), (5, 15), (20, 15), (5, 16), (20, 16), (5, 17), (20, 17), (5, 18), (20, 18), (0, 19), (1, 19), (2, 19), (3, 19), (4, 19), (5, 19), (6, 19), (7, 19), (8, 19), (9, 19), (10, 19), (11, 19), (14, 19), (15, 19), (16, 19), (17, 19), (18, 19), (19, 19), (20, 19), (21, 19), (22, 19), (23, 19), (24, 19), (25, 19), (0, 20), (5, 20), (11, 20), (14, 20), (20, 20), (25, 20), (0, 21), (5, 21), (11, 21), (14, 21), (20, 21), (25, 21), (1, 22), (2, 22), (5, 22), (6, 22), (7, 22), (8, 22), (9, 22), (10, 22), (11, 22), (13, 22), (14, 22), (15, 22), (16, 22), (17, 22), (18, 22), (19, 22), (20, 22), (23, 22), (24, 22), (2, 23), (5, 23), (8, 23), (17, 23), (20, 23), (23, 23), (2, 24), (5, 24), (8, 24), (17, 24), (20, 24), (23, 24), (0, 25), (1, 25), (2, 25), (3, 25), (4, 25), (5, 25), (8, 25), (9, 25), (10, 25), (11, 25), (14, 25), (15, 25), (16, 25), (17, 25), (20, 25), (21, 25), (22, 25), (23, 25), (24, 25), (25, 25), (0, 26), (11, 26), (14, 26), (25, 26), (0, 27), (11, 27), (14, 27), (25, 27), (0, 28), (1, 28), (2, 28), (3, 28), (4, 28), (5, 28), (6, 28), (7, 28), (8, 28), (9, 28), (10, 28), (11, 28), (12, 28), (13, 28), (14, 28), (15, 28), (16, 28), (17, 28), (18, 28), (19, 28), (20, 28), (21, 28), (22, 28), (23, 28), (24, 28), (25, 28)],
 [(0, 3), (25, 3), (0, 22), (25, 22)])
 
+wall_setup = [(0, 0, 725, 25), (0, 0, 25, 800), (0, 775, 725, 25), (700, 0, 25, 800),
+              (75, 75, 75, 50), (200, 75, 100, 50), (350, 25, 25, 100), (425, 75, 100, 50), (575, 75, 75, 50),
+              (75, 175, 75, 25), (200, 175, 25, 175), (275, 175, 175, 25), (500, 175, 25, 175), (575, 175, 75, 25),
+              (50, 250, 100, 100), (225, 250, 75, 25), (350, 225, 25, 50), (425, 250, 75, 25), (575, 250, 100, 100)]
+
 class Pellet(pygame.sprite.Sprite):
-    def __init__(self, pos):
+    def __init__(self, pos, size=12):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((15, 15))
+        self.image = pygame.Surface((size, size))
         self.image.fill((0, 0, 0))
-        pygame.draw.circle(self.image, (255, 255, 255), (7, 7), 6)
+        pygame.draw.circle(self.image, (255, 255, 255), (size//2, size//2), size//2-1)
 
         self.rect = self.image.get_rect()
         self.rect.center = pos
@@ -67,20 +72,24 @@ class Pellet(pygame.sprite.Sprite):
 
 class SuperPellet(Pellet):
     def __init__(self, pos):
-        Pellet.__init__(self, pos)
+        Pellet.__init__(self, pos, 18)
 
 
 class Wall(pygame.sprite.Sprite):
-    def __init__(self, pos, size):
+    def __init__(self, rect):
         pygame.sprite.Sprite.__init__(self)
-        self.rect = (pos[0], pos[1], size[0], size[1])
-        self.image = pygame.Surface(size)
+        self.rect = rect
+        self.image = pygame.Surface((rect[2], rect[3]))
         self.image.fill((0, 0, 0))
-        if size[0] > size[1]:
-            pygame.draw.line(self.image, (0, 0, 200), (size[1]//2, 0), (size[0]-size[1]//2, 0), 5)
-            pygame.draw.line(self.image, (0, 0, 200), (size[1]//2, size[1]-1), (size[0]-size[1]//2, size[1]-1), 5)
-            pygame.draw.arc(self.image, (0, 0, 200), (0, 0, size[1], size[1]), 3.142/2, -3.142/2, 3)
-            pygame.draw.arc(self.image, (0, 0, 200), (size[0] - size[1], 0, size[1], size[1]), -3.142 / 2, 3.142 / 2, 3)
+        pygame.draw.arc(self.image, (0, 0, 200), (0, 0, 20, 20), 3.142 / 2, 3.142, 3)
+        pygame.draw.arc(self.image, (0, 0, 200), (rect[2] - 20, 0, 20, 20), 0, 3.142 / 2, 3)
+        pygame.draw.arc(self.image, (0, 0, 200), (0, rect[3] - 20, 20, 20), 3.142, -3.142 / 2, 3)
+        pygame.draw.arc(self.image, (0, 0, 200), (rect[2] - 20, rect[3] - 20, 20, 20), -3.142 / 2, 0, 3)
+        pygame.draw.line(self.image, (0, 0, 200), (10, 0), (rect[2]-10, 0), 5)
+        pygame.draw.line(self.image, (0, 0, 200), (10, rect[3]-1), (rect[2]-10, rect[3]-1), 5)
+        pygame.draw.line(self.image, (0, 0, 200), (0, 10), (0, rect[3]-10), 5)
+        pygame.draw.line(self.image, (0, 0, 200), (rect[2]-1, 10), (rect[2]-1, rect[3]-10), 5)
+
 
 
 class Pacman(pygame.sprite.Sprite):
@@ -88,7 +97,7 @@ class Pacman(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self, group)
         self.image = pygame.image.load('pacman.png')
         self.rect = self.image.get_rect()
-        self.rect.center = (25, 25)
+        self.rect.center = (50, 50)
         self.pos = pos
         self.current_dir = (0, 0)
         self.next_dir = (0, 0)
@@ -120,19 +129,23 @@ class Pacman(pygame.sprite.Sprite):
                 print("super")
 
 
-def level_setup():
+def setup_pellets():
     for i in pellets.sprites():
         i.kill()
     for pos in pellet_setup[0]:
-        pellets.add(Pellet((pos[0]*10, pos[1]*10)))
+        pellets.add(Pellet((pos[0]*25 + 50, pos[1]*25 +50)))
     for pos in pellet_setup[1]:
-        pellets.add(SuperPellet((pos[0]*10, pos[1]*10)))
+        pellets.add(SuperPellet((pos[0]*25+50, pos[1]*25 +50)))
 
+
+def setup_walls():
+    for rect in wall_setup:
+        walls.add(Wall(rect))
 
 
 pacman = Pacman(sprites)
-level_setup()
-walls.add(Wall((150, 150), (100, 25)))
+setup_pellets()
+setup_walls()
 sprites.add(pellets)
 sprites.add(walls)
 while True:
@@ -150,13 +163,13 @@ while True:
             surf = pygame.display.set_mode((event.w, event.h), RESIZABLE)
         elif event.type == KEYDOWN:
             if event.key == K_UP:
-                pacman.next_dir = (0, -10)
+                pacman.next_dir = (0, -25)
             elif event.key == K_DOWN:
-                pacman.next_dir = (0, 10)
+                pacman.next_dir = (0, 25)
             elif event.key == K_LEFT:
-                pacman.next_dir = (-10, 0)
+                pacman.next_dir = (-25, 0)
             elif event.key == K_RIGHT:
-                pacman.next_dir = (10, 0)
+                pacman.next_dir = (25, 0)
     sprites.update(Clock.tick())
     win.fill((0, 0, 0))
     sprites.draw(win)
