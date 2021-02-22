@@ -1,4 +1,4 @@
-import pygame, sys, random
+import pygame, sys, random, math
 from pygame.locals import *
 pygame.init()
 surf = pygame.display.set_mode((725//2, 800//2), RESIZABLE)
@@ -124,20 +124,28 @@ class Pacman(pygame.sprite.Sprite):
             self.move()
             self.update_image()
 
+
     def update_image(self):
-        self.angle += 3.1416/24
-        if self.angle >= 3.1416/3:
-            self.angle = -3.1416/6
+        self.angle += 3.1416/12
+        if self.angle >= 3.1416/4:
+            self.angle = -3.1416/4
         self.image.fill((0, 0, 0))
         if self.current_dir[1] > 0:
-            facing = -3.1416 / 2
-        elif self.current_dir[1] < 0:
             facing = 3.1416 / 2
+        elif self.current_dir[1] < 0:
+            facing = -3.1416 / 2
         elif self.current_dir[0] < 0:
             facing = 3.1416
         else:
             facing = 0
-        pygame.draw.arc(self.image, (255, 255, 0), (0, 0, 50, 50), facing + abs(self.angle), facing - abs(self.angle), 25)
+        pygame.draw.polygon(self.image, (255, 255, 0), self.get_arc_points(facing), 0)
+
+    def get_arc_points(self, facing):
+        points = []
+        for i in range(int(20*(facing + abs(self.angle))), int(20*(facing - abs(self.angle) + 2*3.1416))):
+            points.append((int(25 + 25*math.cos(i/20)), int(25+25*math.sin(i/20))))
+        points.append((25, 25))
+        return points
 
     def move(self):
         if self.can_go(self.next_dir):
@@ -177,8 +185,6 @@ def setup_walls():
 pacman = Pacman(sprites)
 setup_pellets()
 setup_walls()
-sprites.add(pellets)
-sprites.add(walls)
 while True:
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -203,6 +209,8 @@ while True:
                 pacman.next_dir = (25, 0)
     sprites.update(Clock.tick())
     win.fill((0, 0, 0))
+    pellets.draw(win)
+    walls.draw(win)
     sprites.draw(win)
     surf.blit(pygame.transform.scale(win, (surf.get_width() - offset[0]*2, surf.get_height() - offset[1]*2)), (offset[0], offset[1]))
     pygame.display.update()
