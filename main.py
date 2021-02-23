@@ -10,6 +10,8 @@ pellets = pygame.sprite.Group()
 sprites = pygame.sprite.Group()
 ghosts = pygame.sprite.Group()
 walls = pygame.sprite.Group()
+level = 0
+level_vars = [150, 125, 100]
 # pellet_setup = ["11111111111100111111111111",
 #                 "10000100000100100000100001",
 #                 "10000100000100100000100001",
@@ -97,20 +99,19 @@ class Wall(pygame.sprite.Sprite):
 
 
 class Pacman(pygame.sprite.Sprite):
-    def __init__(self, group, pos=(0, 0)):
+    def __init__(self, group, pos=(350, 600)):
         pygame.sprite.Sprite.__init__(self, group)
         #self.image = pygame.image.load('pacman.png')
         self.image = pygame.Surface((50, 50))
-        pygame.draw.arc(self.image, (255, 255, 0), (0, 0, 50, 50), 3.1416/6, -3.1416/6, 25)
         self.rect = self.image.get_rect()
-        self.rect.center = (50, 50)
-        self.pos = pos
+        self.rect.center = pos
         self.current_dir = (0, 0)
         self.next_dir = (0, 0)
         self.num_pellets = 0
-        self.time_for_move = 100
+        self.time_for_move = level_vars[level]
         self.time = 0
         self.angle = 3.1416/3
+        pygame.draw.polygon(self.image, (255, 255, 0), self.get_arc_points(0), 0)
 
     def can_go(self, dir):
         s = pygame.sprite.Sprite
@@ -160,8 +161,10 @@ class Pacman(pygame.sprite.Sprite):
         pelletList = pygame.sprite.spritecollide(self, pellets, True, collided=pellet_collide)
         self.num_pellets += len(pelletList)
         for i in pelletList:
-            if i is SuperPellet:
+            if isinstance(i, SuperPellet):
                 print("super")
+        if len(pellets.sprites()) <= 0:
+            next_level()
 
 
 def pellet_collide(sprite1, sprite2):
@@ -182,8 +185,15 @@ def setup_walls():
         walls.add(Wall(rect))
 
 
-pacman = Pacman(sprites)
-setup_pellets()
+def next_level():
+    global pacman, level
+    level += 1
+    pacman.kill()
+    pacman = Pacman(sprites)
+    setup_pellets()
+
+pacman = pygame.sprite.Sprite()
+next_level()
 setup_walls()
 while True:
     for event in pygame.event.get():
