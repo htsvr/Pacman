@@ -1,4 +1,4 @@
-import pygame, sys, random
+import pygame, sys, random, math
 from pygame.locals import *
 pygame.init()
 surf = pygame.display.set_mode((725//2, 800//2), RESIZABLE)
@@ -10,6 +10,8 @@ pellets = pygame.sprite.Group()
 sprites = pygame.sprite.Group()
 ghosts = pygame.sprite.Group()
 walls = pygame.sprite.Group()
+level = -1
+level_vars = [150, 125, 100]
 # pellet_setup = ["11111111111100111111111111",
 #                 "10000100000100100000100001",
 #                 "10000100000100100000100001",
@@ -61,7 +63,8 @@ wall_setup = [(0, 0, 725, 25), (0, 0, 25, 350), (0, 775, 725, 25), (700, 0, 25, 
               (25, 400, 125, 100), (200, 400, 25, 100), (500, 400, 25, 100), (575, 400, 125, 100), (275, 475, 175, 25),
               (75, 550, 75, 25), (200, 550, 100, 25), (350, 500, 25, 75), (425, 550, 100, 25), (575, 550, 75, 25),
               (25, 625, 50, 25), (125, 575, 25, 75), (200, 625, 25, 75), (275, 625, 175, 25), (500, 625, 25, 75), (575, 575, 25, 75), (650, 625, 50, 25),
-              (75, 700, 225, 25), (350, 650, 25, 75), (425, 700, 225, 25), (275, 325, 175, 100)]
+              (75, 700, 225, 25), (350, 650, 25, 75), (425, 700, 225, 25), (275, 325, 175, 100),
+              (-25, 325, 25, 25), (725, 325, 25, 25), (-25, 400, 25, 25), (725, 400, 25, 25)]
 
 
 class Pellet(pygame.sprite.Sprite):
@@ -96,30 +99,16 @@ class Wall(pygame.sprite.Sprite):
         pygame.draw.line(self.image, (0, 0, 200), (rect[2]-1, 10), (rect[2]-1, rect[3]-10), 5)
 
 
-
-class Pacman(pygame.sprite.Sprite):
-    def __init__(self, group, pos=(0, 0)):
-        pygame.sprite.Sprite.__init__(self, group)
-        self.image = pygame.image.load('pacman.png')
+class Movable(pygame.sprite.Sprite):
+    def __init__(self, pos, time_for_move=level_vars[level]):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((50, 50))
         self.rect = self.image.get_rect()
-        self.rect.center = (50, 50)
-        self.pos = pos
+        self.rect.center = pos
         self.current_dir = (0, 0)
         self.next_dir = (0, 0)
-        self.num_pellets = 0
-        self.time_for_move = 100
         self.time = 0
-
-    def can_go(self, dir):
-        s = pygame.sprite.Sprite
-        s.rect = self.rect.move(dir[0], dir[1])
-        return len(pygame.sprite.spritecollide(s, walls, False)) == 0
-
-    def update(self, time):
-        self.time += time
-        if self.time >= self.time_for_move:
-            self.time -= self.time_for_move
-            self.move()
+        self.time_for_move = time_for_move
 
     def move(self):
         if self.can_go(self.next_dir):
@@ -127,11 +116,108 @@ class Pacman(pygame.sprite.Sprite):
             self.current_dir = self.next_dir
         elif self.can_go(self.current_dir):
             self.rect = self.rect.move(self.current_dir[0], self.current_dir[1])
-        pelletList = pygame.sprite.spritecollide(self, pellets, True)
+        if self.rect.center[0] <= -25:
+            self.rect.center = (750, self.rect.center[1])
+        elif self.rect.center[0] >= 750:
+            self.rect.center = (-25, self.rect.center[1])
+
+    def can_go(self, dir):
+        s = pygame.sprite.Sprite
+        s.rect = self.rect.move(dir[0], dir[1])
+        return len(pygame.sprite.spritecollide(s, walls, False)) == 0
+
+
+class Ghost(Movable):
+    def __init__(self, color=(225, 125, 125), pos=(50, 50)):
+        Movable.__init__(self, pos, 200)
+        self.color = color
+        self.update_image()
+
+    def update_image(self):
+        self.image.fill((0, 0, 0))
+        pygame.draw.circle(self.image, self.color, (25, 20), 20, 0)
+        pygame.draw.rect(self.image, self.color, (5, 20, 40, 17), 0)
+        pygame.draw.circle(self.image, self.color, (12, 37), 7, 0)
+        pygame.draw.circle(self.image, self.color, (25, 37), 7, 0)
+        pygame.draw.circle(self.image, self.color, (38, 37), 7, 0)
+        pygame.draw.ellipse(self.image, (255, 255, 255), (11, 12, 12, 16), 0)
+        pygame.draw.ellipse(self.image, (255, 255, 255), (27, 12, 12, 16), 0)
+        pygame.draw.ellipse(self.image, (0, 0, 0),
+                            (14 + 3*self.current_dir[0]//25, 16 + 3*self.current_dir[1]//25, 6, 8))
+        pygame.draw.ellipse(self.image, (0, 0, 0),
+                            (30 + 3 * self.current_dir[0] // 25, 16 + 3 * self.current_dir[1] // 25, 6, 8))
+
+    def update(self, time):
+        self.time += time
+        if self.time >= self.time_for_move:
+            self.time -= self.time_for_move
+            self.get_next_dir()
+            self.move()
+            self.update_image()
+
+    def get_next_dir(self):
+        options = []
+        for i in [(25, 0), (-25, 0), (0, 25), (0, -25)]:
+            if not (i[0] == -1*self.current_dir[0] and i[1] == -1*self.current_dir[1]):
+                if self.can_go(i):
+                    options.append(i)
+        if len(options) > 0:
+            self.next_dir = options[random.randint(0, len(options)-1)]
+        else:
+            self.next_dir = (-1*self.current_dir[0], -1*self.current_dir[1])
+
+
+class Pacman(Movable):
+    def __init__(self, pos=(350, 600)):
+        Movable.__init__(self, pos)
+        self.num_pellets = 0
+        self.angle = 3.1416/3
+        self.update_image()
+
+    def update(self, time):
+        self.time += time
+        if self.time >= self.time_for_move:
+            self.time -= self.time_for_move
+            self.move()
+            self.check_pellet_collide()
+            self.update_image()
+
+    def update_image(self):
+        self.angle += 3.1416/12
+        if self.angle >= 3.1416/4:
+            self.angle = -3.1416/4
+        self.image.fill((0, 0, 0))
+        if self.current_dir[1] > 0:
+            facing = 3.1416 / 2
+        elif self.current_dir[1] < 0:
+            facing = -3.1416 / 2
+        elif self.current_dir[0] < 0:
+            facing = 3.1416
+        else:
+            facing = 0
+        pygame.draw.polygon(self.image, (255, 255, 0), self.get_arc_points(facing), 0)
+
+    def get_arc_points(self, facing):
+        points = []
+        for i in range(int(20*(facing + abs(self.angle))), int(20*(facing - abs(self.angle) + 2*3.1416))):
+            points.append((int(25 + 25*math.cos(i/20)), int(25+25*math.sin(i/20))))
+        points.append((25, 25))
+        return points
+
+    def check_pellet_collide(self):
+        pelletList = pygame.sprite.spritecollide(self, pellets, True, collided=pellet_collide)
         self.num_pellets += len(pelletList)
         for i in pelletList:
-            if i is SuperPellet:
+            if isinstance(i, SuperPellet):
                 print("super")
+        if len(pellets.sprites()) <= 0:
+            next_level()
+        if len(pygame.sprite.spritecollide(self, ghosts, False, collided=pellet_collide)):
+            print("you lose, score " + str(self.num_pellets))
+
+
+def pellet_collide(sprite1, sprite2):
+    return -20 < sprite1.rect.center[0] - sprite2.rect.center[0] < 20 and -20 < sprite1.rect.center[1] - sprite2.rect.center[1]  < 20
 
 
 def setup_pellets():
@@ -148,11 +234,20 @@ def setup_walls():
         walls.add(Wall(rect))
 
 
-pacman = Pacman(sprites)
-setup_pellets()
+def next_level():
+    global pacman, level
+    level += 1
+    pacman.kill()
+    pacman = Pacman()
+    sprites.add(pacman)
+    setup_pellets()
+
+
+pacman = pygame.sprite.Sprite()
+ghosts.add(Ghost((255, 100, 100)), Ghost((0, 255, 255)), Ghost((0, 255, 0)), Ghost((255, 0, 0)))
+sprites.add(ghosts)
+next_level()
 setup_walls()
-sprites.add(pellets)
-sprites.add(walls)
 while True:
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -177,6 +272,8 @@ while True:
                 pacman.next_dir = (25, 0)
     sprites.update(Clock.tick())
     win.fill((0, 0, 0))
+    pellets.draw(win)
+    walls.draw(win)
     sprites.draw(win)
     surf.blit(pygame.transform.scale(win, (surf.get_width() - offset[0]*2, surf.get_height() - offset[1]*2)), (offset[0], offset[1]))
     pygame.display.update()
