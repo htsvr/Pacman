@@ -99,48 +99,16 @@ class Wall(pygame.sprite.Sprite):
         pygame.draw.line(self.image, (0, 0, 200), (rect[2]-1, 10), (rect[2]-1, rect[3]-10), 5)
 
 
-class Ghost(pygame.sprite.Sprite):
-    def __init__(self, color=(225, 125, 125), pos=(50, 50)):
+class Movable(pygame.sprite.Sprite):
+    def __init__(self, pos, time_for_move=level_vars[level]):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((50, 50))
         self.rect = self.image.get_rect()
         self.rect.center = pos
-        self.color = color
-        self.update_image()
         self.current_dir = (0, 0)
         self.next_dir = (0, 0)
         self.time = 0
-        self.time_for_move = level_vars[level]
-
-
-    def update_image(self):
-        self.image.fill((0, 0, 0))
-        pygame.draw.circle(self.image, self.color, (25, 20), 20, 0)
-        pygame.draw.rect(self.image, self.color, (5, 20, 40, 30), 0)
-
-    def update(self, time):
-        self.time += time
-        if self.time >= self.time_for_move:
-            self.time -= self.time_for_move
-            self.get_next_dir()
-            self.move()
-            self.update_image()
-
-    def can_go(self, dir):
-        s = pygame.sprite.Sprite
-        s.rect = self.rect.move(dir[0], dir[1])
-        return len(pygame.sprite.spritecollide(s, walls, False)) == 0
-
-    def get_next_dir(self):
-        if self.current_dir[0] == -25:
-            options = [(0, -25), (0, 25), (-25, 0)]
-        elif self.current_dir[0] == 25:
-            options = [(0, -25), (0, 25), (1, 25)]
-        elif self.current_dir[1] == -25:
-            options = [(0, -25), (25, 0), (-25, 0)]
-        else:
-            options = [(1, 25), (0, 25), (-25, 0)]
-        self.next_dir = options[random.randint(0, 2)]
+        self.time_for_move = time_for_move
 
     def move(self):
         if self.can_go(self.next_dir):
@@ -153,31 +121,65 @@ class Ghost(pygame.sprite.Sprite):
         elif self.rect.center[0] >= 750:
             self.rect.center = (-25, self.rect.center[1])
 
-
-class Pacman(pygame.sprite.Sprite):
-    def __init__(self, group, pos=(350, 600)):
-        pygame.sprite.Sprite.__init__(self, group)
-        self.image = pygame.Surface((50, 50))
-        self.rect = self.image.get_rect()
-        self.rect.center = pos
-        self.current_dir = (0, 0)
-        self.next_dir = (0, 0)
-        self.num_pellets = 0
-        self.time_for_move = level_vars[level]
-        self.time = 0
-        self.angle = 3.1416/3
-        pygame.draw.polygon(self.image, (255, 255, 0), self.get_arc_points(0), 0)
-
     def can_go(self, dir):
         s = pygame.sprite.Sprite
         s.rect = self.rect.move(dir[0], dir[1])
         return len(pygame.sprite.spritecollide(s, walls, False)) == 0
+
+
+class Ghost(Movable):
+    def __init__(self, color=(225, 125, 125), pos=(50, 50)):
+        Movable.__init__(self, pos, 200)
+        self.color = color
+        self.update_image()
+
+    def update_image(self):
+        self.image.fill((0, 0, 0))
+        pygame.draw.circle(self.image, self.color, (25, 20), 20, 0)
+        pygame.draw.rect(self.image, self.color, (5, 20, 40, 17), 0)
+        pygame.draw.circle(self.image, self.color, (12, 37), 7, 0)
+        pygame.draw.circle(self.image, self.color, (25, 37), 7, 0)
+        pygame.draw.circle(self.image, self.color, (38, 37), 7, 0)
+        pygame.draw.ellipse(self.image, (255, 255, 255), (11, 12, 12, 16), 0)
+        pygame.draw.ellipse(self.image, (255, 255, 255), (27, 12, 12, 16), 0)
+        pygame.draw.ellipse(self.image, (0, 0, 0),
+                            (14 + 3*self.current_dir[0]//25, 16 + 3*self.current_dir[1]//25, 6, 8))
+        pygame.draw.ellipse(self.image, (0, 0, 0),
+                            (30 + 3 * self.current_dir[0] // 25, 16 + 3 * self.current_dir[1] // 25, 6, 8))
+
+    def update(self, time):
+        self.time += time
+        if self.time >= self.time_for_move:
+            self.time -= self.time_for_move
+            self.get_next_dir()
+            self.move()
+            self.update_image()
+
+    def get_next_dir(self):
+        options = []
+        for i in [(25, 0), (-25, 0), (0, 25), (0, -25)]:
+            if not (i[0] == -1*self.current_dir[0] and i[1] == -1*self.current_dir[1]):
+                if self.can_go(i):
+                    options.append(i)
+        if len(options) > 0:
+            self.next_dir = options[random.randint(0, len(options)-1)]
+        else:
+            self.next_dir = (-1*self.current_dir[0], -1*self.current_dir[1])
+
+
+class Pacman(Movable):
+    def __init__(self, pos=(350, 600)):
+        Movable.__init__(self, pos)
+        self.num_pellets = 0
+        self.angle = 3.1416/3
+        self.update_image()
 
     def update(self, time):
         self.time += time
         if self.time >= self.time_for_move:
             self.time -= self.time_for_move
             self.move()
+            self.check_pellet_collide()
             self.update_image()
 
     def update_image(self):
@@ -202,16 +204,7 @@ class Pacman(pygame.sprite.Sprite):
         points.append((25, 25))
         return points
 
-    def move(self):
-        if self.can_go(self.next_dir):
-            self.rect = self.rect.move(self.next_dir[0], self.next_dir[1])
-            self.current_dir = self.next_dir
-        elif self.can_go(self.current_dir):
-            self.rect = self.rect.move(self.current_dir[0], self.current_dir[1])
-        if self.rect.center[0] <= -25:
-            self.rect.center = (750, self.rect.center[1])
-        elif self.rect.center[0] >= 750:
-            self.rect.center = (-25, self.rect.center[1])
+    def check_pellet_collide(self):
         pelletList = pygame.sprite.spritecollide(self, pellets, True, collided=pellet_collide)
         self.num_pellets += len(pelletList)
         for i in pelletList:
@@ -219,6 +212,8 @@ class Pacman(pygame.sprite.Sprite):
                 print("super")
         if len(pellets.sprites()) <= 0:
             next_level()
+        if len(pygame.sprite.spritecollide(self, ghosts, False, collided=pellet_collide)):
+            print("you lose, score " + str(self.num_pellets))
 
 
 def pellet_collide(sprite1, sprite2):
@@ -243,12 +238,13 @@ def next_level():
     global pacman, level
     level += 1
     pacman.kill()
-    pacman = Pacman(sprites)
+    pacman = Pacman()
+    sprites.add(pacman)
     setup_pellets()
 
 
 pacman = pygame.sprite.Sprite()
-ghosts.add(Ghost())
+ghosts.add(Ghost((255, 100, 100)), Ghost((0, 255, 255)), Ghost((0, 255, 0)), Ghost((255, 0, 0)))
 sprites.add(ghosts)
 next_level()
 setup_walls()
