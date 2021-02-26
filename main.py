@@ -73,7 +73,6 @@ class Pellet(pygame.sprite.Sprite):
         self.image = pygame.Surface((size, size))
         self.image.fill((0, 0, 0))
         pygame.draw.circle(self.image, (255, 255, 255), (size//2, size//2), size//2-1)
-
         self.rect = self.image.get_rect()
         self.rect.center = pos
 
@@ -100,7 +99,7 @@ class Wall(pygame.sprite.Sprite):
 
 
 class Movable(pygame.sprite.Sprite):
-    def __init__(self, pos, time_for_move=level_vars[level]):
+    def __init__(self, pos, in_box=False, time_for_move=level_vars[level]):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((50, 50))
         self.rect = self.image.get_rect()
@@ -109,6 +108,7 @@ class Movable(pygame.sprite.Sprite):
         self.next_dir = (0, 0)
         self.time = 0
         self.time_for_move = time_for_move
+        self.in_box = in_box
 
     def move(self):
         if self.can_go(self.next_dir):
@@ -120,26 +120,49 @@ class Movable(pygame.sprite.Sprite):
             self.rect.center = (750, self.rect.center[1])
         elif self.rect.center[0] >= 750:
             self.rect.center = (-25, self.rect.center[1])
+        if not (250 <= self.rect[0] <= 425 and 300 <= self.rect[1] <= 400):
+            self.in_box = False
 
     def can_go(self, dir):
         s = pygame.sprite.Sprite
         s.rect = self.rect.move(dir[0], dir[1])
-        return len(pygame.sprite.spritecollide(s, walls, False)) == 0
+        if not self.in_box:
+            if len(pygame.sprite.spritecollide(s, walls, False)) > 0:
+                if isinstance(self, Ghost) and self.dead:
+                    return False
+                    # Fix this for dead ghosts
+                else:
+                    return False
+            else:
+                return True
+        else:
+            if 275 <= s.rect[0] <= 400 and 325 <= s.rect[1] <= 375:
+                return True
+            elif 325 <= s.rect[0] <= 350 and s.rect[1] < 325:
+                return True
+            else:
+                return False
 
 
 class Ghost(Movable):
-    def __init__(self, color=(225, 125, 125), pos=(50, 50)):
-        Movable.__init__(self, pos, 200)
+    def __init__(self, color=(225, 125, 125), pos=(325, 350)):
+        Movable.__init__(self, pos, True, 200)
         self.color = color
+        self.dead = False
         self.update_image()
 
     def update_image(self):
         self.image.fill((0, 0, 0))
-        pygame.draw.circle(self.image, self.color, (25, 20), 20, 0)
-        pygame.draw.rect(self.image, self.color, (5, 20, 40, 17), 0)
-        pygame.draw.circle(self.image, self.color, (12, 37), 7, 0)
-        pygame.draw.circle(self.image, self.color, (25, 37), 7, 0)
-        pygame.draw.circle(self.image, self.color, (38, 37), 7, 0)
+        if not self.dead:
+            if pacman.super_time > 0:
+                color = (0, 0, 255)
+            else:
+                color = self.color
+            pygame.draw.circle(self.image, color, (25, 20), 20, 0)
+            pygame.draw.rect(self.image, color, (5, 20, 40, 17), 0)
+            pygame.draw.circle(self.image, color, (12, 37), 7, 0)
+            pygame.draw.circle(self.image, color, (25, 37), 7, 0)
+            pygame.draw.circle(self.image, color, (38, 37), 7, 0)
         pygame.draw.ellipse(self.image, (255, 255, 255), (11, 12, 12, 16), 0)
         pygame.draw.ellipse(self.image, (255, 255, 255), (27, 12, 12, 16), 0)
         pygame.draw.ellipse(self.image, (0, 0, 0),
@@ -173,9 +196,11 @@ class Pacman(Movable):
         self.num_pellets = 0
         self.angle = 3.1416/3
         self.update_image()
+        self.super_time = 0
 
     def update(self, time):
         self.time += time
+        self.super_time -= time
         if self.time >= self.time_for_move:
             self.time -= self.time_for_move
             self.move()
@@ -209,11 +234,16 @@ class Pacman(Movable):
         self.num_pellets += len(pelletList)
         for i in pelletList:
             if isinstance(i, SuperPellet):
-                print("super")
+                self.super_time = 10000
         if len(pellets.sprites()) <= 0:
             next_level()
-        if len(pygame.sprite.spritecollide(self, ghosts, False, collided=pellet_collide)):
-            print("you lose, score " + str(self.num_pellets))
+        ghost_list = pygame.sprite.spritecollide(self, ghosts, False, collided=pellet_collide)
+        if len(ghost_list) > 0:
+            if self.super_time > 0:
+                for g in ghost_list:
+                    g.dead = True
+            else:
+                print("you lose, score " + str(self.num_pellets))
 
 
 def pellet_collide(sprite1, sprite2):
@@ -243,7 +273,7 @@ def next_level():
     setup_pellets()
 
 
-pacman = pygame.sprite.Sprite()
+pacman = Pacman()
 ghosts.add(Ghost((255, 100, 100)), Ghost((0, 255, 255)), Ghost((0, 255, 0)), Ghost((255, 0, 0)))
 sprites.add(ghosts)
 next_level()
