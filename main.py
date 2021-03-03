@@ -129,8 +129,7 @@ class Movable(pygame.sprite.Sprite):
         if not self.in_box:
             if len(pygame.sprite.spritecollide(s, walls, False)) > 0:
                 if isinstance(self, Ghost) and self.dead:
-                    return False
-                    # Fix this for dead ghosts
+                    return (325 <= s.rect[0] <= 350 and 275 <= s.rect[1] <= 300) or (275 <= s.rect[0] <= 400 and 325 <= s.rect[1] <= 375)
                 else:
                     return False
             else:
@@ -176,6 +175,9 @@ class Ghost(Movable):
             self.time -= self.time_for_move
             self.get_next_dir()
             self.move()
+            if self.dead and 275 <= self.rect[0] <= 400 and 325 <= self.rect[1] <= 375:
+                self.in_box = True
+                self.dead = False
             self.update_image()
 
     def get_next_dir(self):
@@ -243,7 +245,10 @@ class Pacman(Movable):
                 for g in ghost_list:
                     g.dead = True
             else:
-                print("you lose, score " + str(self.num_pellets))
+                for g in ghost_list:
+                    if not g.dead:
+                        print("you lose, score " + str(self.num_pellets))
+                        break
 
 
 def pellet_collide(sprite1, sprite2):
