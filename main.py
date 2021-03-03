@@ -11,7 +11,10 @@ sprites = pygame.sprite.Group()
 ghosts = pygame.sprite.Group()
 walls = pygame.sprite.Group()
 level = -1
-level_vars = [150, 125, 100]
+level_vars = [150, 125, 100, 75, 50]
+score = 0
+lost = False
+font = pygame.font.SysFont('arial', 60)
 # pellet_setup = ["11111111111100111111111111",
 #                 "10000100000100100000100001",
 #                 "10000100000100100000100001",
@@ -99,7 +102,7 @@ class Wall(pygame.sprite.Sprite):
 
 
 class Movable(pygame.sprite.Sprite):
-    def __init__(self, pos, in_box=False, time_for_move=level_vars[level]):
+    def __init__(self, pos, in_box=False, frozen=False, time_for_move=level_vars[level]):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((50, 50))
         self.rect = self.image.get_rect()
@@ -109,19 +112,21 @@ class Movable(pygame.sprite.Sprite):
         self.time = 0
         self.time_for_move = time_for_move
         self.in_box = in_box
+        self.frozen = frozen
 
     def move(self):
-        if self.can_go(self.next_dir):
-            self.rect = self.rect.move(self.next_dir[0], self.next_dir[1])
-            self.current_dir = self.next_dir
-        elif self.can_go(self.current_dir):
-            self.rect = self.rect.move(self.current_dir[0], self.current_dir[1])
-        if self.rect.center[0] <= -25:
-            self.rect.center = (750, self.rect.center[1])
-        elif self.rect.center[0] >= 750:
-            self.rect.center = (-25, self.rect.center[1])
-        if not (250 <= self.rect[0] <= 425 and 300 <= self.rect[1] <= 400):
-            self.in_box = False
+        if not self.frozen:
+            if self.can_go(self.next_dir):
+                self.rect = self.rect.move(self.next_dir[0], self.next_dir[1])
+                self.current_dir = self.next_dir
+            elif self.can_go(self.current_dir):
+                self.rect = self.rect.move(self.current_dir[0], self.current_dir[1])
+            if self.rect.center[0] <= -25:
+                self.rect.center = (750, self.rect.center[1])
+            elif self.rect.center[0] >= 750:
+                self.rect.center = (-25, self.rect.center[1])
+            if not (250 <= self.rect[0] <= 425 and 300 <= self.rect[1] <= 400):
+                self.in_box = False
 
     def can_go(self, dir):
         s = pygame.sprite.Sprite
@@ -144,8 +149,8 @@ class Movable(pygame.sprite.Sprite):
 
 
 class Ghost(Movable):
-    def __init__(self, color=(225, 125, 125), pos=(325, 350)):
-        Movable.__init__(self, pos, True, 200)
+    def __init__(self, color=(225, 125, 125), pos=(325, 350), frozen=True):
+        Movable.__init__(self, pos, True, frozen, 200)
         self.color = color
         self.dead = False
         self.update_image()
@@ -186,16 +191,27 @@ class Ghost(Movable):
             if not (i[0] == -1*self.current_dir[0] and i[1] == -1*self.current_dir[1]):
                 if self.can_go(i):
                     options.append(i)
-        if len(options) > 0:
-            self.next_dir = options[random.randint(0, len(options)-1)]
+        if len(options) <= 0:
+            self.next_dir = (-1 * self.current_dir[0], -1 * self.current_dir[1])
+        elif self.dead:
+            distance = (1000000000, -1)
+            for i in range(len(options)):
+                s = pygame.sprite.Sprite()
+                s.rect = self.rect.move(options[i])
+                if ((s.rect[0] - 337)**2 + (s.rect[1] - 300)**2) < distance[0]:
+                    distance = (((s.rect[0] - 337)**2 + (s.rect[1] - 300)**2), i)
+            if distance[1] > -1:
+                self.next_dir = (options[distance[1]])
+            else:
+                print("check this")
+
         else:
-            self.next_dir = (-1*self.current_dir[0], -1*self.current_dir[1])
+            self.next_dir = options[random.randint(0, len(options) - 1)]
 
 
 class Pacman(Movable):
     def __init__(self, pos=(350, 600)):
         Movable.__init__(self, pos)
-        self.num_pellets = 0
         self.angle = 3.1416/3
         self.update_image()
         self.super_time = 0
@@ -232,8 +248,9 @@ class Pacman(Movable):
         return points
 
     def check_pellet_collide(self):
+        global score, lost
         pelletList = pygame.sprite.spritecollide(self, pellets, True, collided=pellet_collide)
-        self.num_pellets += len(pelletList)
+        score += len(pelletList)*10
         for i in pelletList:
             if isinstance(i, SuperPellet):
                 self.super_time = 10000
@@ -242,12 +259,16 @@ class Pacman(Movable):
         ghost_list = pygame.sprite.spritecollide(self, ghosts, False, collided=pellet_collide)
         if len(ghost_list) > 0:
             if self.super_time > 0:
+                score += len(ghost_list)*500
                 for g in ghost_list:
                     g.dead = True
             else:
                 for g in ghost_list:
                     if not g.dead:
-                        print("you lose, score " + str(self.num_pellets))
+                        for h in ghosts:
+                            h.frozen = True
+                        pacman.frozen = True
+                        lost = True
                         break
 
 
@@ -269,6 +290,13 @@ def setup_walls():
         walls.add(Wall(rect))
 
 
+def setup_ghosts():
+    for g in ghosts:
+        g.kill()
+    ghosts.add(Ghost((255, 100, 100), (300, 350)), Ghost((0, 255, 255), (350, 350)), Ghost((0, 255, 0), (400, 350)), Ghost((255, 0, 0), (375, 400)))
+    sprites.add(ghosts)
+
+
 def next_level():
     global pacman, level
     level += 1
@@ -276,11 +304,24 @@ def next_level():
     pacman = Pacman()
     sprites.add(pacman)
     setup_pellets()
+    setup_ghosts()
+
+
+def check_frozen():
+    if not pacman.frozen:
+        for g in ghosts:
+            if g.frozen:
+                g.frozen = False
+
+
+def renderText(text, pos, color=(150, 150, 150)):
+    label = font.render(text, True, color)
+    rect = label.get_rect()
+    rect.center = pos
+    win.blit(label, rect)
 
 
 pacman = Pacman()
-ghosts.add(Ghost((255, 100, 100)), Ghost((0, 255, 255)), Ghost((0, 255, 0)), Ghost((255, 0, 0)))
-sprites.add(ghosts)
 next_level()
 setup_walls()
 while True:
@@ -299,16 +340,26 @@ while True:
         elif event.type == KEYDOWN:
             if event.key == K_UP:
                 pacman.next_dir = (0, -25)
+                check_frozen()
             elif event.key == K_DOWN:
                 pacman.next_dir = (0, 25)
+                check_frozen()
             elif event.key == K_LEFT:
                 pacman.next_dir = (-25, 0)
+                check_frozen()
             elif event.key == K_RIGHT:
                 pacman.next_dir = (25, 0)
-    sprites.update(Clock.tick())
-    win.fill((0, 0, 0))
-    pellets.draw(win)
-    walls.draw(win)
-    sprites.draw(win)
+                check_frozen()
+    if not lost:
+        sprites.update(Clock.tick())
+        win.fill((0, 0, 0))
+        pellets.draw(win)
+        walls.draw(win)
+        sprites.draw(win)
+    else:
+        win.fill((50, 50, 50))
+        renderText("You Died", (win.get_width()//2, win.get_height()//2 - 100))
+        renderText("Score: " + str(score), (win.get_width() // 2, win.get_height() // 2))
+        # Add restart button
     surf.blit(pygame.transform.scale(win, (surf.get_width() - offset[0]*2, surf.get_height() - offset[1]*2)), (offset[0], offset[1]))
     pygame.display.update()
