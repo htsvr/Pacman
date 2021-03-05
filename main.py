@@ -1,9 +1,9 @@
 import pygame, sys, random, math
 from pygame.locals import *
 pygame.init()
-surf = pygame.display.set_mode((725//2, 800//2), RESIZABLE)
+surf = pygame.display.set_mode((725//2, 850//2), RESIZABLE)
 Clock = pygame.time.Clock()
-win = pygame.Surface((725, 800))
+win = pygame.Surface((725, 850))
 offset = [0, 0]
 tile_width = 10
 pellets = pygame.sprite.Group()
@@ -153,12 +153,13 @@ class Ghost(Movable):
         Movable.__init__(self, pos, True, frozen, 200)
         self.color = color
         self.dead = False
+        self.super_time = 0
         self.update_image()
 
     def update_image(self):
         self.image.fill((0, 0, 0))
         if not self.dead:
-            if pacman.super_time > 0:
+            if self.super_time > 0:
                 color = (0, 0, 255)
             else:
                 color = self.color
@@ -176,6 +177,7 @@ class Ghost(Movable):
 
     def update(self, time):
         self.time += time
+        self.super_time -= time
         if self.time >= self.time_for_move:
             self.time -= self.time_for_move
             self.get_next_dir()
@@ -211,14 +213,12 @@ class Ghost(Movable):
 
 class Pacman(Movable):
     def __init__(self, pos=(350, 600)):
-        Movable.__init__(self, pos)
+        Movable.__init__(self, pos, False, False, level_vars[level])
         self.angle = 3.1416/3
         self.update_image()
-        self.super_time = 0
 
     def update(self, time):
         self.time += time
-        self.super_time -= time
         if self.time >= self.time_for_move:
             self.time -= self.time_for_move
             self.move()
@@ -253,17 +253,18 @@ class Pacman(Movable):
         score += len(pelletList)*10
         for i in pelletList:
             if isinstance(i, SuperPellet):
-                self.super_time = 10000
+                for g in ghosts:
+                    g.super_time = 10000
         if len(pellets.sprites()) <= 0:
             next_level()
-        ghost_list = pygame.sprite.spritecollide(self, ghosts, False, collided=pellet_collide)
+        ghost_list = pygame.sprite.spritecollide(self, ghosts, False, collided=ghost_collide)
         if len(ghost_list) > 0:
-            if self.super_time > 0:
-                score += len(ghost_list)*500
-                for g in ghost_list:
+            for g in ghost_list:
+                if not g.dead and g.super_time > 0:
+                    score += len(ghost_list)*500
                     g.dead = True
-            else:
-                for g in ghost_list:
+                    g.super_time = 0
+                else:
                     if not g.dead:
                         for h in ghosts:
                             h.frozen = True
@@ -274,6 +275,10 @@ class Pacman(Movable):
 
 def pellet_collide(sprite1, sprite2):
     return -20 < sprite1.rect.center[0] - sprite2.rect.center[0] < 20 and -20 < sprite1.rect.center[1] - sprite2.rect.center[1]  < 20
+
+
+def ghost_collide(sprite1, sprite2):
+    return -30 < sprite1.rect.center[0] - sprite2.rect.center[0] < 30 and -30 < sprite1.rect.center[1] - sprite2.rect.center[1]  < 30
 
 
 def setup_pellets():
@@ -330,12 +335,12 @@ while True:
             pygame.quit()
             sys.exit()
         elif event.type == VIDEORESIZE:
-            if event.w > event.h:
-                offset[0] = (event.w - event.h)//2
+            if event.w/725 > event.h/850:
+                offset[0] = int((event.w - event.h*725/850)/2)
                 offset[1] = 0
             else:
                 offset[0] = 0
-                offset[1] = (event.h - event.w)//2
+                offset[1] = int((event.h - event.w*850/725)/2)
             surf = pygame.display.set_mode((event.w, event.h), RESIZABLE)
         elif event.type == KEYDOWN:
             if event.key == K_UP:
@@ -350,16 +355,38 @@ while True:
             elif event.key == K_RIGHT:
                 pacman.next_dir = (25, 0)
                 check_frozen()
+            elif event.key == K_SPACE and lost:
+                level = -1
+                lost = False
+                score = 0
+                next_level()
+        elif event.type == MOUSEBUTTONDOWN:
+            button_rect = (surf.get_width()//2 - 100*surf.get_width()/win.get_width(), surf.get_height()//2 + 65*surf.get_width()/win.get_width(), 200*surf.get_width()/win.get_width(), 70*surf.get_width()/win.get_width())
+            if lost and button_rect[0] <= event.pos[0] <= button_rect[0] + button_rect[2] and button_rect[1] <= event.pos[1] <= button_rect[1] + button_rect[3]:
+                level = -1
+                lost = False
+                score = 0
+                next_level()
     if not lost:
         sprites.update(Clock.tick())
         win.fill((0, 0, 0))
         pellets.draw(win)
         walls.draw(win)
         sprites.draw(win)
+        renderText("Score: " + str(score), (725//2, 825), (255, 255, 255))
     else:
         win.fill((50, 50, 50))
         renderText("You Died", (win.get_width()//2, win.get_height()//2 - 100))
         renderText("Score: " + str(score), (win.get_width() // 2, win.get_height() // 2))
-        # Add restart button
+        pygame.draw.rect(win, (150, 150, 150), (win.get_width()//2 - 100, win.get_height()//2 + 65, 200, 70), 0)
+        renderText("Restart", (win.get_width()//2, win.get_height()//2 + 100), (0, 0, 0))
     surf.blit(pygame.transform.scale(win, (surf.get_width() - offset[0]*2, surf.get_height() - offset[1]*2)), (offset[0], offset[1]))
     pygame.display.update()
+
+# make Movement less random
+# remove starting pellet
+# add level num text
+# add more level vars
+# fruit?
+# ghosts leave box at a certain time
+#
